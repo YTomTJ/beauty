@@ -2,10 +2,10 @@
 
 #include <boost/system/system_error.hpp>
 #include <boost/beast/core/string.hpp>
+#include <boost/utility/string_view.hpp>
 
 #include <vector>
 #include <string>
-#include <string_view>
 #include <memory>
 
 namespace beauty {
@@ -39,11 +39,11 @@ void
 fail(boost::system::error_code ec, const char* what);
 
 // --------------------------------------------------------------------------
-std::vector<std::string_view>
+std::vector<boost::string_view>
 split(const std::string& str, char sep = '/');
 
-std::vector<std::string_view>
-split(const std::string_view& str_view, char sep = '/');
+std::vector<boost::string_view>
+split(const boost::string_view& str_view, char sep = '/');
 
 // --------------------------------------------------------------------------
 std::string escape(const std::string& s);

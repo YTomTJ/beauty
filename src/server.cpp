@@ -180,8 +180,8 @@ server::enable_swagger(const char* swagger_entrypoint)
         auto to_lower = [](std::string s) { for(auto& c : s) c = std::tolower(c); return s; };
 
         nlohmann::ordered_json paths;
-        for (const auto&[verb, routes] : _router) {
-            for (auto&& route : routes) {
+        for (const auto& pair /*[verb, routes]*/ : _router) {
+            for (auto&& route : pair.second) {
                 nlohmann::ordered_json description = {
                         {"description", route.route_info().description}
                 };
@@ -204,7 +204,7 @@ server::enable_swagger(const char* swagger_entrypoint)
                     }
                 }
 
-                paths[swagger_path(route)][to_lower(to_string(verb).to_string())] = std::move(description);
+                paths[swagger_path(route)][to_lower(to_string(pair.first).to_string())] = std::move(description);
             }
         }
 

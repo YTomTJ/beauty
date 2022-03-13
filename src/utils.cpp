@@ -17,21 +17,21 @@ namespace {
 
 //---------------------------------------------------------------------------
 template<typename T>
-std::vector<std::string_view>
+std::vector<boost::string_view>
 split(const T& str, char sep)
 {
-    std::vector<std::string_view> columns;
+    std::vector<boost::string_view> columns;
     size_t begin = 0;
     while(begin < str.size()) {
         size_t end = str.find(sep, begin);
         if (end == T::npos)
             end = str.size();
 
-        columns.push_back(std::string_view(&str[begin], end - begin));
+        columns.push_back(boost::string_view(&str[begin], end - begin));
         begin = end + 1;
     }
     if (str.empty() || *str.rbegin() == sep)
-        columns.push_back(std::string_view(&str[0] + begin, 0));
+        columns.push_back(boost::string_view(&str[0] + begin, 0));
 
     return columns;
 }
@@ -89,17 +89,17 @@ fail(boost::system::error_code ec, const char* what)
 }
 
 //---------------------------------------------------------------------------
-std::vector<std::string_view>
+std::vector<boost::string_view>
 split(const std::string& str, char sep)
 {
     return ::split<std::string>(str, sep);
 }
 
 //---------------------------------------------------------------------------
-std::vector<std::string_view>
-split(const std::string_view& str_view, char sep)
+std::vector<boost::string_view>
+split(const boost::string_view& str_view, char sep)
 {
-    return ::split<std::string_view>(str_view, sep);
+    return ::split<boost::string_view>(str_view, sep);
 }
 
 //---------------------------------------------------------------------------

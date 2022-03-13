@@ -64,11 +64,12 @@ route::update_route_info(const beauty::route_info& route_info)
     _route_info.description = route_info.description;
 
     for (const auto& param : route_info.route_parameters) {
-        if (auto found = std::find_if(begin(_route_info.route_parameters),
-                                  end(_route_info.route_parameters),
-                                  [&param](const auto& info) {
-            return (param.name == info.name);
-        }); found != end(_route_info.route_parameters)) {
+        auto found = std::find_if(begin(_route_info.route_parameters),
+            end(_route_info.route_parameters),
+            [&param](const auto& info) {
+                return (param.name == info.name);
+            });
+        if(found != end(_route_info.route_parameters)) {
             found->description = param.description;
             found->type = param.type;
             found->format = param.format;
@@ -91,7 +92,7 @@ route::match(beauty::request& req, bool is_websocket) const noexcept
     }
 
     // Remove attributes and target split
-    auto target_split = split(std::string_view{req.target().data(), req.target().size()}, '?');
+    auto target_split = split(boost::string_view{req.target().data(), req.target().size()}, '?');
     auto request_paths = split(target_split[0], '/');
     std::string attrs = (target_split.size() > 1 ? std::string(target_split[1]): "");
 

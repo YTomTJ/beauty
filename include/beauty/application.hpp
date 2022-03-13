@@ -4,6 +4,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
+#include <boost/optional.hpp>
 
 #include <vector>
 #include <thread>
@@ -59,7 +60,7 @@ private:
     asio::io_context            _ioc;
     asio::executor_work_guard<asio::io_context::executor_type> _work;
     asio::ssl::context          _ssl_context;
-    std::optional<certificates> _certificates;
+    boost::optional<certificates> _certificates;
 
     std::vector<std::thread>    _threads;
 

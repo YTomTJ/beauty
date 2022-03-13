@@ -41,7 +41,7 @@ private:
 
         static
         std::shared_ptr<request_context> Create(asio::io_context& ioc, beauty::request&& req,
-                const beauty::url& url, const beauty::duration& d, std::optional<client::client_cb> cb = {}) {
+                const beauty::url& url, const beauty::duration& d, boost::optional<client::client_cb> cb = {}) {
 
             // Create a request context to pass on each callback
             auto req_ctx = std::make_shared<request_context>(ioc);
@@ -135,7 +135,7 @@ public:
                 });
         }
 
-        std::lock_guard guard{_requests_mtx};
+        std::lock_guard<decltype(_requests_mtx)> guard(_requests_mtx);
         bool connection_required = false;
         if constexpr(SSL) {
             //std::cout << "session_client:" << __LINE__ << " : Connection required ? " << _requests.empty() << " && " << !_stream.next_layer().is_open() << std::endl;
@@ -190,7 +190,7 @@ public:
         // Look up the domain name
         _resolver.async_resolve(
                 (*_requests.begin())->url.host(),
-                port_view,
+                std::string(port_view.data(), port_view.size()),
                 [me = this->shared_from_this()](const boost::system::error_code& ec,
                                                 const asio::ip::tcp::resolver::results_type& results) {
                     me->on_resolve(ec, results);
@@ -202,7 +202,7 @@ public:
     {
         //std::cout << "session_client:" << __LINE__ << " : on_resolve" << std::endl;
         if (ec) {
-            std::lock_guard guard{_requests_mtx};
+            std::lock_guard<decltype(_requests_mtx)> guard(_requests_mtx);
             return fail(**_requests.begin(), ec, "resolve");
         }
 
@@ -238,7 +238,7 @@ public:
     {
         //std::cout << "session_client:" << __LINE__ << " : on_connect" << std::endl;
         if (ec) {
-            std::lock_guard guard{_requests_mtx};
+            std::lock_guard<decltype(_requests_mtx)> guard(_requests_mtx);
 
             auto req_ctx = *_requests.begin();
             req_ctx->timer.cancel(); // will call on_timer with operator_cancelled
@@ -255,7 +255,7 @@ public:
                 });
         }
         else {
-            std::lock_guard guard{_requests_mtx};
+            std::lock_guard<decltype(_requests_mtx)> guard(_requests_mtx);
             do_write();
         }
     }
@@ -263,11 +263,11 @@ public:
     void
     on_handshake(boost::system::error_code ec) {
         if(ec) {
-            std::lock_guard guard{_requests_mtx};
+            std::lock_guard<decltype(_requests_mtx)> guard(_requests_mtx);
             return fail(**_requests.begin(), ec, "handshake");
         }
 
-        std::lock_guard guard{_requests_mtx};
+        std::lock_guard<decltype(_requests_mtx)> guard(_requests_mtx);
         do_write();
     }
 
@@ -310,7 +310,7 @@ public:
     on_write(boost::system::error_code ec, std::size_t)
     {
         //std::cout << "session_client:" << __LINE__ << " : on_write" << std::endl;
-        std::lock_guard guard{_requests_mtx};
+        std::lock_guard<decltype(_requests_mtx)> guard(_requests_mtx);
 
         if (ec) {
             return fail(**_requests.begin(), ec, "write");
@@ -342,7 +342,7 @@ public:
     {
         //std::cout << "session_client:" << __LINE__ << " : on_read" << std::endl;
 
-        std::lock_guard guard{_requests_mtx};
+        std::lock_guard<decltype(_requests_mtx)> guard(_requests_mtx);
         auto req_ctx = *_requests.begin();
 
         if (ec) {

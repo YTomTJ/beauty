@@ -3,6 +3,9 @@
 
 namespace beauty
 {
+
+const attribute attributes::EMPTY;
+
 // --------------------------------------------------------------------------
 attributes::attributes(const std::string& str, char sep)
 {

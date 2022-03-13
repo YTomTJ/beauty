@@ -1,16 +1,17 @@
 #include <beauty/url.hpp>
 
 #include <beauty/utils.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include <iostream>
 #include <charconv>
 
 namespace {
 // --------------------------------------------------------------------------
-std::pair<std::string_view, std::string_view>
-split_pair(const std::string_view& view, char sep, bool mandatory_left = true)
+std::pair<boost::string_view, boost::string_view>
+split_pair(const boost::string_view& view, char sep, bool mandatory_left = true)
 {
-    std::pair<std::string_view, std::string_view> tmp;
+    std::pair<boost::string_view, boost::string_view> tmp;
 
     auto pair_split = beauty::split(view, sep);
     if (pair_split.size() == 1) {
@@ -48,7 +49,9 @@ url::url(std::string u) : _url(std::move(u))
     }
 
     // [[login][:password]@]<host>[:port]
-    auto [user_info, host] = split_pair(url_split[2], '@', false);
+    auto _pair = split_pair(url_split[2], '@', false);
+    auto user_info = _pair.first;
+    auto host = _pair.second;
     if (user_info.size()) {
         std::tie(_login, _password) = split_pair(user_info, ':');
     }
@@ -56,8 +59,13 @@ url::url(std::string u) : _url(std::move(u))
         std::tie(_host, _port_view) = split_pair(host, ':');
     }
     if (_port_view.size()) {
-        auto[p, ec] = std::from_chars(&_port_view[0],&_port_view[0] + _port_view.size(), _port);
-        if (ec != std::errc()) {
+        //auto _res /*[p, ec]*/= std::from_chars(&_port_view[0],&_port_view[0] + _port_view.size(), _port);
+        //if (_res.second != std::errc()) {
+        //    throw std::runtime_error("Invalid port number " + std::string(_port_view));
+        //}
+        try {
+            _port = boost::lexical_cast<decltype(_port)>(_port_view);
+        } catch (const boost::bad_lexical_cast&) {
             throw std::runtime_error("Invalid port number " + std::string(_port_view));
         }
     }
@@ -71,10 +79,10 @@ url::url(std::string u) : _url(std::move(u))
         // Find the start of the query '?'
         auto found_query = _url.find('?', pos);
         if (found_query != std::string::npos) {
-            _path = std::string_view(&_url[pos], found_query - pos);
-            _query = std::string_view(&_url[found_query]);
+            _path = boost::string_view(&_url[pos], found_query - pos);
+            _query = boost::string_view(&_url[found_query]);
         } else {
-            _path = std::string_view(&_url[pos]);
+            _path = boost::string_view(&_url[pos]);
         }
     }
 }

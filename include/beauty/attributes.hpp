@@ -30,7 +30,7 @@ public:
 private:
     attribute_storage _attributes;
 
-    inline static const attribute EMPTY;
+    static const attribute EMPTY;
 };
 
 }
