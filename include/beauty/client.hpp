@@ -27,17 +27,17 @@ namespace beauty {
         client(client &&) = default;
         client &operator=(client &&) = default;
 
-        client &connect(int port, std::string addr = "", const callback &cb = {})
+        client &connect(int port, std::string addr = "", const callback &cb = {}, int verbose = 0)
         {
-            return connect(port, address_v4::from_string(addr), cb);
+            return connect(port, address_v4::from_string(addr), cb, verbose);
         }
 
-        client &connect(int port, address_v4 addr = {}, const callback &cb = {})
+        client &connect(int port, address_v4 addr = {}, const callback &cb = {}, int verbose = 0)
         {
-            return connect(endpoint(addr, port), cb);
+            return connect(endpoint(addr, port), cb, verbose);
         }
 
-        client &connect(endpoint ep, const callback &cb = {})
+        client &connect(endpoint ep, const callback &cb = {}, int verbose = 0)
         {
             try {
                 if (!_app.is_started()) {
@@ -46,7 +46,8 @@ namespace beauty {
 
                 if (!_session) {
                     // Create the session on first call...
-                    _session = std::make_shared<session>(_app.ioc(), std::move(_socket), cb);
+                    _session
+                        = std::make_shared<session>(_app.ioc(), std::move(_socket), cb, verbose);
                 }
 
                 _session->do_connect(ep);

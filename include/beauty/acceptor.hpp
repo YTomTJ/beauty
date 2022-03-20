@@ -19,11 +19,12 @@ namespace beauty {
     //---------------------------------------------------------------------------
     class acceptor : public std::enable_shared_from_this<acceptor> {
     public:
-        acceptor(application &app, endpoint &endpoint, const callback &cb)
+        acceptor(application &app, endpoint &endpoint, const callback &cb, int verbose)
             : _app(app)
             , _acceptor(app.ioc())
             , _socket(app.ioc())
             , _callback(cb)
+            , _verbose(verbose)
         {
             boost::system::error_code ec;
 
@@ -91,6 +92,7 @@ namespace beauty {
 
         void do_accept()
         {
+            _INFO(_verbose > 1, __FUNCTION_NAME__ <<);
             _acceptor.async_accept(
                 _socket, [me = shared_from_this()](auto ec) { me->on_accept(ec); });
         }
@@ -107,6 +109,7 @@ namespace beauty {
             _callback.on_accepted(epx);
 
             if (ec) {
+                _ERROR(true)
                 _app.stop();
             } else {
 
@@ -117,8 +120,8 @@ namespace beauty {
 
                     if (!_session) {
                         // Create the session on first call...
-                        _session
-                            = std::make_shared<session>(_app.ioc(), std::move(_socket), _callback);
+                        _session = std::make_shared<session>(
+                            _app.ioc(), std::move(_socket), _callback, _verbose);
                     }
 
                     _session->read(true);
@@ -142,6 +145,7 @@ namespace beauty {
         asio::ip::tcp::socket _socket;
         std::shared_ptr<session> _session;
         const callback &_callback;
+        const int _verbose;
     };
 
 } // namespace beauty

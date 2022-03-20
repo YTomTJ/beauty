@@ -20,10 +20,9 @@ namespace beauty {
         using stream_type = void*;
 
     public:
-        session(asio::io_context& ioc, asio::ip::tcp::socket&& socket, const callback& cb)
+        session(asio::io_context& ioc, asio::ip::tcp::socket&& socket, const callback& cb, int verbose)
             : _socket(std::move(socket))
-            , _identity_as_server(true)
-            , _callback(cb)
+            , _callback(cb), _verbose(verbose),
 #if (BOOST_VERSION < 107000)
             , _strand(_socket.get_executor())
 #else
@@ -152,6 +151,6 @@ namespace beauty {
         asio::strand<asio::io_context::executor_type> _strand;
         boost::asio::streambuf _buffer;
         const callback& _callback;
-        const bool _identity_as_server;
+        const int _verbose;
     };
 } // namespace beauty

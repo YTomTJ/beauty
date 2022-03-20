@@ -22,12 +22,12 @@
 #define _ERROR(cond, x) (void)0;
 #endif
 
-#ifdef USING_LOGURU
-                loguru::set_thread_name( //
-                    fmt::format("TCP/{}:{}", //
-                        _end_point.address().to_string(), //
-                        _end_point.port())
-                        .c_str());
+#ifndef __FUNCTION_NAME__
+#ifdef WIN32 // WINDOWS
+#define __FUNCTION_NAME__ __FUNCTION__
+#else //*NIX
+#define __FUNCTION_NAME__ __func__
+#endif
 #endif
 
 namespace beauty {
@@ -47,7 +47,7 @@ namespace beauty {
         std::function<void(endpoint)> on_accepted = [](endpoint) {};
         std::function<void(endpoint)> on_disconnected = [](endpoint) {};
         std::function<void(const size_t)> on_write = [](const size_t) {};
-        std::function<void(const buffer_type&)> on_read = [](const buffer_type&) {};
+        std::function<void(const buffer_type &)> on_read = [](const buffer_type &) {};
     };
 
 } // namespace beauty

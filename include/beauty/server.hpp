@@ -26,21 +26,24 @@ namespace beauty {
             return *this;
         }
 
-        server &listen(int port, std::string addr = "")
+        server &listen(int port, std::string addr = "", int verbose = 0)
         {
-            return listen(port, address_v4::from_string(addr));
+            return listen(port, address_v4::from_string(addr), verbose);
         }
 
-        server &listen(int port, address_v4 addr = {}) { return listen(endpoint(addr, port)); }
+        server &listen(int port, address_v4 addr = {}, int verbose = 0)
+        {
+            return listen(endpoint(addr, port), verbose);
+        }
 
-        server &listen(endpoint ep)
+        server &listen(endpoint ep, int verbose = 0)
         {
             if (!_app.is_started()) {
                 _app.start(_concurrency);
             }
             _endpoint = std::move(ep);
             // Create and launch a listening port
-            _acceptor = std::make_shared<acceptor>(_app, _endpoint, _callback);
+            _acceptor = std::make_shared<acceptor>(_app, _endpoint, _callback, verbose);
             _acceptor->run();
 
             return *this;
