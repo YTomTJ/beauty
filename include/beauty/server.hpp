@@ -29,71 +29,79 @@ namespace beauty {
             return *this;
         }
 
-        server &listen(int port, std::string addr, int verbose = 0)
+        const std::shared_ptr<acceptor> &listen(
+            int port, std::string addr, const callback &cb, int verbose = 0)
         {
-            return listen(port, address_v4::from_string(addr), verbose);
+            return listen(port, cb, address_v4::from_string(addr), verbose);
         }
 
-        server &listen(int port, address_v4 addr = {}, int verbose = 0)
+        const std::shared_ptr<acceptor> &listen(
+            int port, const callback &cb, address_v4 addr = {}, int verbose = 0)
         {
-            return listen(endpoint(addr, port), verbose);
+            return listen(endpoint(addr, port), cb, verbose);
         }
 
-        server &listen(endpoint ep, int verbose = 0)
+        const std::shared_ptr<acceptor> &listen(endpoint ep, const callback &cb, int verbose = 0)
         {
             if (!_app.is_started()) {
                 _app.start(_concurrency);
             }
-            _endpoint = std::move(ep);
-            // Create and launch a listening port
-            _acceptor = std::make_shared<acceptor>(_app, _endpoint, _callback, verbose);
-            _acceptor->run();
-
-            return *this;
-        }
-
-        template <typename T>
-        void write(T data, bool async)
-        {
-            if (_acceptor)
-                _acceptor->write(data, async);
-        }
-
-        void read(bool async)
-        {
-            if (_acceptor)
-                _acceptor->read(async);
+            _acceptors.emplace(ep, std::make_shared<acceptor>(_app, ep, cb, verbose));
+            return _acceptors.at(ep);
         }
 
         void stop()
         {
-            if (_acceptor) {
-                _acceptor->stop();
+            for (auto &actp : _acceptors) {
+                if (actp.second) {
+                    actp.second->stop();
+                }
             }
             _app.stop();
         }
 
-        void run() { _app.run(); }
+        void run()
+        {
+            for (auto &actp : _acceptors) {
+                if (actp.second) {
+                    actp.second->run();
+                }
+            }
+            _app.run();
+        }
 
         void wait() { _app.wait(); }
 
-        server &set_callback(const callback &cb)
+        const std::shared_ptr<acceptor> &get_acceptor(int port, std::string addr) const
         {
-            _callback = std::move(cb);
-            return *this;
+            return get_acceptor(port, address_v4::from_string(addr));
         }
 
-        const callback &get_callback() const noexcept { return _callback; }
+        const std::shared_ptr<acceptor> &get_acceptor(int port, address_v4 addr = {}) const
+        {
+            return get_acceptor(endpoint(addr, port));
+        }
 
-        const endpoint &get_endpoint() const { return _endpoint; }
-        const int port() const { return _endpoint.port(); }
+        const std::shared_ptr<acceptor> &get_acceptor(endpoint ep) const
+        {
+            assert(_acceptors.find(ep) != _acceptors.end());
+            return _acceptors.at(ep);
+        }
+
+        const std::vector<endpoint> &get_endpoints() const
+        {
+            std::vector<endpoint> keys;
+            std::transform(_acceptors.begin(), _acceptors.end(), std::back_inserter(keys),
+                [](auto &pair) { return pair.first; });
+            return std::move(keys);
+        }
 
     private:
         application _app;
         int _concurrency = 1;
         callback _callback;
-        std::shared_ptr<acceptor> _acceptor;
-        endpoint _endpoint;
+
+        std::map<endpoint, std::shared_ptr<acceptor>> _acceptors;
     };
 
 } // namespace beauty

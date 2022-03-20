@@ -43,7 +43,9 @@ namespace beauty {
                 _ERROR(_verbose > 0,
                     "Connect to " << ep << " faild with error (" << ec.value()
                                   << "): " << ec.message());
-                _callback.on_connect_failed(ep, ec);
+                if (_callback.on_connect_failed(ep, ec)) {
+                    do_connect(ep);
+                }
                 return;
             } else {
                 _INFO(_verbose > 1, "Succeed connecting to " << ep);
@@ -81,8 +83,7 @@ namespace beauty {
             boost::asio::streambuf::mutable_buffers_type mbuf
                 = _buffer.prepare(1024 * 1024 * 1024); // 1Go..
             if (async) {
-                // Read a full request (only if on _stream/_socket)
-                boost::asio::async_read(_socket, mbuf,
+                _socket.async_read_some(mbuf,
                     asio::bind_executor(
                         _strand, [me = this->shared_from_this()](auto ec, auto tbytes) {
                             me->on_read(ec, tbytes);
@@ -111,7 +112,9 @@ namespace beauty {
                 _buffer.commit(tbytes);
                 buffer_copy(boost::asio::buffer(_temp_buffer), _buffer.data());
                 _buffer.consume(tbytes);
-                _callback.on_read(_temp_buffer);
+                if (_callback.on_read(_temp_buffer)) {
+                    read(true);
+                }
             }
         }
 

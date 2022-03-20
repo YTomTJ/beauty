@@ -65,7 +65,7 @@ namespace beauty {
         }
 
         template <typename T>
-        void write(T data, bool async)
+        void write(const T &data, bool async)
         {
             if (_session)
                 _session->write(data, async);

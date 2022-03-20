@@ -43,24 +43,57 @@ namespace beauty {
 
     class callback {
     public:
-        std::function<void(endpoint)> on_connected = [](endpoint) {};
-        std::function<void(endpoint, error_code)> on_connect_failed = [](endpoint, error_code) {};
+        /**
+         * @brief Callback on server acception succeeded.
+         * @note Server ONLY.
+         */
         std::function<void(endpoint)> on_accepted = [](endpoint) {};
+
+        /**
+         * @brief Callback on client connection succeeded.
+         * @note Client ONLY.
+         */
+        std::function<void(endpoint)> on_connected = [](endpoint) {};
+
+        /**
+         * @brief Callback on client connection failed.
+         * @note Client ONLY.
+         *      return `true` to try connect again.
+         *      return `false` to close the session. [Default]
+         */
+        std::function<bool(endpoint, error_code)> on_connect_failed
+            = [](endpoint, error_code) { return false; };
+
+        /**
+         * @brief Callback on connection is closed.
+         * @note Client ONLY.
+         *      A server's acceptor will replace it to have better response.
+         *      A user's on_disconnected event will be ignored.
+         */
         std::function<void(endpoint)> on_disconnected = [](endpoint) {};
 
+        /**
+         * @brief Callback on successflly wrote some data.
+         */
         std::function<void(const size_t)> on_write = [](const size_t) {};
         /**
          * @brief Callback on write failed.
          *      return `true` to try write (async) again.
-         *      return `flase` to close the session.
+         *      return `false` to close the session. [Default]
          */
         std::function<bool(error_code)> on_write_failed = [](error_code) { return false; };
 
-        std::function<void(const buffer_type &)> on_read = [](const buffer_type &) {};
+        /**
+         * @brief Callback on read some data.
+         *      return `true` to try read (async) again. [Default]
+         *      return `false` to close the session.
+         */
+        std::function<bool(const buffer_type &)> on_read
+            = [](const buffer_type &) { return true; };
         /**
          * @brief Callback on read failed.
          *      return `true` to try write (async) again.
-         *      return `flase` to close the session.
+         *      return `false` to close the session. [Default]
          */
         std::function<bool(error_code)> on_read_failed = [](error_code) { return false; };
     };
