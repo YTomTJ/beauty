@@ -66,9 +66,9 @@ namespace beauty {
 
         /**
          * @brief Callback on connection is closed.
-         * @note Client ONLY.
-         *      A server's acceptor will replace it to have better response.
-         *      A user's on_disconnected event will be ignored.
+         * @note For a @ref client, the param `endpoint` make no sense.
+         *       For a @ref server, its @ref acceptor will REPLACE this method to have better
+         * response when a connection is failed.
          */
         std::function<void(endpoint)> on_disconnected = [](endpoint) {};
 
@@ -88,8 +88,7 @@ namespace beauty {
          *      return `true` to try read (async) again. [Default]
          *      return `false` to close the session.
          */
-        std::function<bool(const buffer_type &)> on_read
-            = [](const buffer_type &) { return true; };
+        std::function<bool(const buffer_type &)> on_read = [](const buffer_type &) { return true; };
         /**
          * @brief Callback on read failed.
          *      return `true` to try write (async) again.

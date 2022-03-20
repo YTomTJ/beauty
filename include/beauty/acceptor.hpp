@@ -65,6 +65,12 @@ namespace beauty {
             }
         }
 
+        /**
+         * @brief Write some data.
+         * @tparam T Buffer template type. Supported types see @ref session.
+         * @param data The writing buffer.
+         * @param async If using async writing mode.
+         */
         template <typename T>
         void write(const T &data, bool async)
         {
@@ -72,6 +78,10 @@ namespace beauty {
                 _session->write(data, async);
         }
 
+        /**
+         * @brief Start a read action.
+         * @param async If using async reading mode.
+         */
         void read(bool async)
         {
             if (_session)

@@ -3,6 +3,7 @@
 #include <beauty/header.hpp>
 
 #include <boost/asio.hpp>
+#include <boost/atomic.hpp>
 
 #include <string>
 #include <memory>
@@ -29,22 +30,70 @@ namespace beauty {
         {
         }
 
-        void do_connect(endpoint ep)
+        /**
+         * @brief Make connection.
+         * @param ep Target remote endpoint.
+         */
+        void connect(endpoint ep)
         {
+            if (_is_connnected)
+                return;
             _INFO(_verbose > 1, "Make connect to " << ep);
             _socket.async_connect(ep, [me = this->shared_from_this(), ep](const error_code &ec) {
                 me->on_connect(ep, ec);
             });
         }
 
+        /**
+         * @brief Start a read action.
+         * @param async If using async reading mode.
+         */
+        void read(bool async) //
+        {
+            do_read(async);
+        }
+
+        /**
+         * @brief Write some data.
+         * @param pack The buffer in type of a packet of bytes.
+         * @param async If using async writing mode.
+         */
+        void write(const std::vector<uint8_t> &pack, bool async)
+        {
+            do_write(boost::asio::buffer(pack), async);
+        }
+
+        /**
+         * @brief Write some data.
+         * @param pack The string type buffer.
+         * @param async If using async writing mode.
+         */
+        void write(const std::string &info, bool async)
+        {
+            do_write(boost::asio::buffer(info.c_str(), info.size()), async);
+        }
+
+        /**
+         * @brief Write some data.
+         * @param pack The stream type buffer.
+         * @param async If using async writing mode.
+         */
+        void write(const boost::asio::streambuf &buf, bool async)
+        {
+            do_write(boost::asio::buffer(buf.data(), buf.size()), async);
+        }
+
+    protected:
         void on_connect(const endpoint &ep, const error_code &ec)
         {
             if (ec) {
                 _ERROR(_verbose > 0,
                     "Connect to " << ep << " faild with error (" << ec.value()
                                   << "): " << ec.message());
-                if (_callback.on_connect_failed(ep, ec)) {
-                    do_connect(ep);
+                // Only refused connection could be reconnect.
+                if (_callback.on_connect_failed(ep, ec) && !_is_connnected
+                    && ec == boost::system::errc::connection_refused) {
+                    connect(ep);
                 }
                 return;
             } else {
@@ -52,31 +101,10 @@ namespace beauty {
                 error_code ecx;
                 auto epx = _socket.remote_endpoint(ecx);
                 _callback.on_connected(epx);
+                _is_connnected = true;
             }
         }
 
-    public:
-        void read(bool async) //
-        {
-            do_read(async);
-        }
-
-        void write(const std::vector<uint8_t> &pack, bool async)
-        {
-            do_write(boost::asio::buffer(pack), async);
-        }
-
-        void write(const std::string &info, bool async)
-        {
-            do_write(boost::asio::buffer(info.c_str(), info.size()), async);
-        }
-
-        void write(const boost::asio::streambuf &buf, bool async)
-        {
-            do_write(boost::asio::buffer(buf.data(), buf.size()), async);
-        }
-
-    protected:
         void do_read(bool async)
         {
             _INFO(_verbose > 1, "Arrise " << (async ? "an async" : "a sync") << " read action.");
@@ -100,7 +128,7 @@ namespace beauty {
             if (ec) {
                 _ERROR(
                     _verbose > 0, "Read faild with error (" << ec.value() << "): " << ec.message());
-                if (_callback.on_read_failed(ec)) {
+                if (_callback.on_read_failed(ec) && _is_connnected) {
                     read(true);
                 } else {
                     do_close();
@@ -139,7 +167,8 @@ namespace beauty {
             if (ec) {
                 _ERROR(_verbose > 0,
                     "Write faild with error (" << ec.value() << "): " << ec.message());
-                if (_callback.on_write_failed(ec)) {
+                // Will re-write only when connected.
+                if (_callback.on_write_failed(ec) && _is_connnected) {
                     do_write(std::move(buffer), true);
                 } else {
                     do_close();
@@ -159,9 +188,11 @@ namespace beauty {
             _socket.shutdown(asio::ip::tcp::socket::shutdown_send, ec);
             _socket.close();
             _callback.on_disconnected(epx);
+            _is_connnected = false;
         }
 
     private:
+        boost::atomic<bool> _is_connnected = false;
         asio::ip::tcp::socket _socket;
         asio::strand<asio::io_context::executor_type> _strand;
         boost::asio::streambuf _buffer;

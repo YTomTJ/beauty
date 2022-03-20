@@ -31,7 +31,10 @@ namespace beauty {
         application(application &&) = delete;
         application &operator=(application &&) = delete;
 
-        // Start the thread pool, running the event loop, not blocking
+        /**
+         * @brief Start the thread pool, running the event loop, not blocking
+         * @param concurrency Number of worker threads.
+         */
         void start(int concurrency = 1)
         {
             // Prevent to run twice
@@ -70,7 +73,9 @@ namespace beauty {
             }
         }
 
-        // Stop the event loop.
+        /**
+         * @brief Stop the event loop.
+         */
         void stop()
         {
             if (is_stopped()) {
@@ -85,7 +90,9 @@ namespace beauty {
             }
         }
 
-        // Run the event loop in the current thread, blocking
+        /**
+         * @brief Run the event loop in the current thread (blocking).
+         */
         void run()
         {
             if (is_stopped()) {
@@ -97,7 +104,9 @@ namespace beauty {
             _ioc.run();
         }
 
-        // Wait for the application to be stopped, blocking
+        /**
+         * @brief Wait for the application to be stopped (blocking).
+         */
         void wait()
         {
             while (!is_stopped()) {
@@ -105,14 +114,41 @@ namespace beauty {
             }
         }
 
-        void post(std::function<void()> fct)
+        /**
+         * @brief Post work to the IO service.
+         * @param work Something to execute.
+         */
+        void post(std::function<void()> work)
         {
-            boost::asio::post(_ioc.get_executor(), std::move(fct));
+            boost::asio::post(_ioc.get_executor(), std::move(work));
         }
 
+        /**
+         * @brief If the IO service's threads running.
+         * @return true
+         * @return false
+         */
         bool is_started() const { return _state == State::started; }
+
+        /**
+         * @brief If the IO service's threads hving been stopped.
+         * @return true
+         * @return false
+         */
         bool is_stopped() const { return _state == State::stopped; }
+
+        /**
+         * @brief There are how many the IO service's worker threads.
+         * @return true
+         * @return false
+         */
         size_t active_threads() const { return _active_threads; }
+
+        /**
+         * @brief Access the IO service.
+         * @return true
+         * @return false
+         */
         asio::io_context &ioc() { return _ioc; }
 
     private:
