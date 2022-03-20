@@ -1,23 +1,53 @@
 #pragma once
 
-namespace beauty {
-    namespace header
-    {
-        struct content_type {
-            explicit content_type(const char* v) : value(v) {}
-            std::string value;
+#include <vector>
+#include <string>
+#include <functional>
+#include <boost/asio.hpp>
 
-            std::string operator()(const std::string&) const { return value; }
-        };
-    }
-}
+#define USING_LOG 1
+#define USING_LOGURU
+
+#if defined(USING_LOG) && USING_LOG
+#ifdef USING_LOGURU
+#include "./loguru/loguru.hpp"
+#define _INFO(cond, x)  VLOG_IF_S(loguru::Verbosity_INFO, cond) << x;
+#define _ERROR(cond, x) VLOG_IF_S(loguru::Verbosity_ERROR, cond) << x;
+#else
+#define _INFO(cond, x) (cond ? std::cout << x << std::endl : (void)0;
+#define _ERROR(cond, x) (cond ? std::cout << x << std::endl: (void)0;
+#endif
+#else
+#define _INFO(cond, x)  (void)0;
+#define _ERROR(cond, x) (void)0;
+#endif
+
+#ifdef USING_LOGURU
+                loguru::set_thread_name( //
+                    fmt::format("TCP/{}:{}", //
+                        _end_point.address().to_string(), //
+                        _end_point.port())
+                        .c_str());
+#endif
 
 namespace beauty {
-    namespace content_type {
-        static const beauty::header::content_type text_plain         {"text/plain"};
-        static const beauty::header::content_type text_html          {"text/html"};
-        static const beauty::header::content_type application_json   {"application/json"};
-        static const beauty::header::content_type image_x_icon       {"image/x-icon"};
-        static const beauty::header::content_type image_png          {"image/png"};
-    }
-}
+
+    using buffer_type = std::vector<uint8_t>;
+    using endpoint = boost::asio::ip::tcp::endpoint;
+    using error_code = boost::system::error_code;
+
+    // --------------------------------------------------------------------------
+    // TCP callback interface
+    // --------------------------------------------------------------------------
+
+    class callback {
+    public:
+        std::function<void(endpoint)> on_connected = [](endpoint) {};
+        std::function<void(endpoint, error_code)> on_connect_failed = [](endpoint, error_code) {};
+        std::function<void(endpoint)> on_accepted = [](endpoint) {};
+        std::function<void(endpoint)> on_disconnected = [](endpoint) {};
+        std::function<void(const size_t)> on_write = [](const size_t) {};
+        std::function<void(const buffer_type&)> on_read = [](const buffer_type&) {};
+    };
+
+} // namespace beauty

@@ -1,9 +1,8 @@
 #pragma once
 
-#include <beauty/certificate.hpp>
+#include <beauty/header.hpp>
 
 #include <boost/asio.hpp>
-#include <boost/asio/ssl.hpp>
 #include <boost/optional.hpp>
 
 #include <vector>
@@ -14,71 +13,113 @@
 namespace asio = boost::asio;
 
 namespace beauty {
-class timer;
+    class timer;
 
-// --------------------------------------------------------------------------
-class application {
-public:
-    application();
-    explicit application(certificates&& c);
+    // --------------------------------------------------------------------------
+    class application {
+    public:
+        application()
+            : _work(asio::make_work_guard(_ioc))
+            , _state(State::waiting)
+        {
+        }
+        ~application() { stop(); }
 
-    ~application();
+        application(const application &) = delete;
+        application &operator=(const application &) = delete;
+        application(application &&) = delete;
+        application &operator=(application &&) = delete;
 
-    application(const application&) = delete;
-    application& operator=(const application&) = delete;
-    application(application&&) = delete;
-    application& operator=(application&&) = delete;
+        // Start the thread pool, running the event loop, not blocking
+        void start(int concurrency = 1)
+        {
+            // Prevent to run twice
+            if (is_started()) {
+                return;
+            }
 
-    // Start the thread pool, running the event loop, not blocking
-    void start(int concurrency = 1);
+            if (is_stopped()) {
+                // The application was started before, we need
+                // to restart the ioc cleanly
+                _ioc.restart();
+            }
+            _state = State::started;
 
-    bool is_started() const { return _state == State::started; }
-    bool is_stopped() const { return _state == State::stopped; }
+            // Run the I/O service on the requested number of threads
+            _threads.resize(std::max(1, concurrency));
+            _active_threads = 0;
+            for (auto &t : _threads) {
+                ++_active_threads;
+                t = std::thread([this] {
+                    for (;;) {
+                        try {
+                            _ioc.run();
+                            break;
+                        } catch (const std::exception &ex) {
+                            _ERROR(true, "worker error: " << ex.what());
+                        }
+                    }
+                    --_active_threads;
+                });
+                t.detach();
+                // Threads are detached, it's easier to stop inside an handler
+            }
+        }
 
-    // Stop the event loop, reset wil cancel all current operations (timers)
-    void stop(bool reset = true);
+        // Stop the event loop.
+        void stop()
+        {
+            if (is_stopped()) {
+                return;
+            }
+            _state = State::stopped;
 
-    // Run the event loop in the current thread, blocking
-    void run();
+            _ioc.stop();
 
-    // Wait for the application to be stopped, blocking
-    void wait();
+            while (_active_threads != 0) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+        }
 
-    void post(std::function<void()>);
+        // Run the event loop in the current thread, blocking
+        void run()
+        {
+            if (is_stopped()) {
+                _ioc.restart();
+            }
+            _state = State::started;
 
-    asio::io_context& ioc() { return _ioc; }
-    asio::ssl::context& ssl_context() { return _ssl_context; }
-    bool is_ssl_activated() const { return (bool)_certificates; }
+            // Run
+            _ioc.run();
+        }
 
-    static application& Instance();
-    static application& Instance(certificates&& c);
+        // Wait for the application to be stopped, blocking
+        void wait()
+        {
+            while (!is_stopped()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(25));
+            }
+        }
 
-    std::vector<std::shared_ptr<timer>> timers;
-        // Need for cancellation, to be improved...
+        void post(std::function<void()> fct)
+        {
+            boost::asio::post(_ioc.get_executor(), std::move(fct));
+        }
 
-private:
-    asio::io_context            _ioc;
-    asio::executor_work_guard<asio::io_context::executor_type> _work;
-    asio::ssl::context          _ssl_context;
-    boost::optional<certificates> _certificates;
+        bool is_started() const { return _state == State::started; }
+        bool is_stopped() const { return _state == State::stopped; }
+        size_t active_threads() const { return _active_threads; }
+        asio::io_context &ioc() { return _ioc; }
 
-    std::vector<std::thread>    _threads;
+    private:
+        asio::io_context _ioc;
+        asio::executor_work_guard<asio::io_context::executor_type> _work;
 
-    enum class State { waiting, started, stopped };
-    std::atomic<State> _state{State::waiting}; // Three State allows a good ioc.restart
-    std::atomic<int>   _active_threads{0}; // std::barrier in C++20
+        std::vector<std::thread> _threads;
 
-private:
-    void load_server_certificates();
-};
+        enum class State { waiting, started, stopped };
+        std::atomic<State> _state{ State::waiting }; // Three State allows a good ioc.restart
+        std::atomic<int> _active_threads{ 0 }; // std::barrier in C++20
+    };
 
-// --------------------------------------------------------------------------
-// Singleton direct access
-// --------------------------------------------------------------------------
-void start(int concurrency = 1);
-bool is_started();
-void run();
-void wait();
-void stop();
-void post(std::function<void()>);
-}
+} // namespace beauty
