@@ -15,8 +15,9 @@ namespace beauty {
     // --------------------------------------------------------------------------
     class client {
     public:
-        client()
-            : _socket(_app.ioc())
+        client(std::string name = "client")
+            : _app(name)
+            , _socket(_app.ioc())
         {
         }
         ~client() { stop(); }
@@ -27,7 +28,7 @@ namespace beauty {
         client(client &&) = default;
         client &operator=(client &&) = default;
 
-        client &connect(int port, std::string addr = "", const callback &cb = {}, int verbose = 0)
+        client &connect(int port, std::string addr, const callback &cb = {}, int verbose = 0)
         {
             return connect(port, address_v4::from_string(addr), cb, verbose);
         }

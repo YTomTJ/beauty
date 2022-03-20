@@ -18,8 +18,9 @@ namespace beauty {
     // --------------------------------------------------------------------------
     class application {
     public:
-        application()
-            : _work(asio::make_work_guard(_ioc))
+        application(std::string name)
+            : _name(name)
+            , _work(asio::make_work_guard(_ioc))
             , _state(State::waiting)
         {
         }
@@ -51,6 +52,9 @@ namespace beauty {
             for (auto &t : _threads) {
                 ++_active_threads;
                 t = std::thread([this] {
+#ifdef USING_LOGURU
+                    loguru::set_thread_name(_name.c_str());
+#endif
                     for (;;) {
                         try {
                             _ioc.run();
@@ -112,6 +116,8 @@ namespace beauty {
         asio::io_context &ioc() { return _ioc; }
 
     private:
+        const std::string _name;
+
         asio::io_context _ioc;
         asio::executor_work_guard<asio::io_context::executor_type> _work;
 

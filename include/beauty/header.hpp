@@ -34,6 +34,7 @@ namespace beauty {
 
     using buffer_type = std::vector<uint8_t>;
     using endpoint = boost::asio::ip::tcp::endpoint;
+    using address_v4 = boost::asio::ip::address_v4;
     using error_code = boost::system::error_code;
 
     // --------------------------------------------------------------------------
@@ -46,8 +47,22 @@ namespace beauty {
         std::function<void(endpoint, error_code)> on_connect_failed = [](endpoint, error_code) {};
         std::function<void(endpoint)> on_accepted = [](endpoint) {};
         std::function<void(endpoint)> on_disconnected = [](endpoint) {};
+
         std::function<void(const size_t)> on_write = [](const size_t) {};
+        /**
+         * @brief Callback on write failed.
+         *      return `true` to try write (async) again.
+         *      return `flase` to close the session.
+         */
+        std::function<bool(error_code)> on_write_failed = [](error_code) { return false; };
+
         std::function<void(const buffer_type &)> on_read = [](const buffer_type &) {};
+        /**
+         * @brief Callback on read failed.
+         *      return `true` to try write (async) again.
+         *      return `flase` to close the session.
+         */
+        std::function<bool(error_code)> on_read_failed = [](error_code) { return false; };
     };
 
 } // namespace beauty

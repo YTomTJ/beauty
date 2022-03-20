@@ -12,8 +12,6 @@ namespace asio = boost::asio;
 
 namespace beauty {
 
-    using endpoint = endpoint;
-
     //---------------------------------------------------------------------------
     // Accepts incoming connections and launches the sessions
     //---------------------------------------------------------------------------
@@ -35,12 +33,12 @@ namespace beauty {
                 return;
             }
 
-            // Allow address reuse
-            _acceptor.set_option(asio::socket_base::reuse_address(true));
-            if (ec) {
-                _app.stop();
-                return;
-            }
+            // // Allow address reuse
+            // _acceptor.set_option(asio::socket_base::reuse_address(true));
+            // if (ec) {
+            //     _app.stop();
+            //     return;
+            // }
 
             // Bind to the server address
             _acceptor.bind(endpoint, ec);
@@ -92,7 +90,8 @@ namespace beauty {
 
         void do_accept()
         {
-            _INFO(_verbose > 1, __FUNCTION_NAME__ <<);
+            auto ep = _acceptor.local_endpoint();
+            _INFO(_verbose > 1, "Start acception on " << ep);
             _acceptor.async_accept(
                 _socket, [me = shared_from_this()](auto ec) { me->on_accept(ec); });
         }
@@ -100,16 +99,21 @@ namespace beauty {
     protected:
         void on_accept(error_code ec)
         {
+
+            auto ep = _acceptor.local_endpoint();
+
             if (ec == boost::system::errc::operation_canceled) {
+                _INFO(_verbose > 1,
+                    "Acception on " << ep << " canceled (" << ec.value() << "): " << ec.message());
                 return; // Nothing to do anymore
             }
 
-            error_code ecx;
-            endpoint epx = _socket.remote_endpoint(ecx);
-            _callback.on_accepted(epx);
+            _callback.on_accepted(ep);
 
             if (ec) {
-                _ERROR(true)
+                _ERROR(_verbose > 0,
+                    "Acception on " << ep << " faild with error (" << ec.value()
+                                    << "): " << ec.message());
                 _app.stop();
             } else {
 
@@ -119,7 +123,7 @@ namespace beauty {
                     }
 
                     if (!_session) {
-                        // Create the session on first call...
+                        _INFO(_verbose > 1, "Make session for " << ep);
                         _session = std::make_shared<session>(
                             _app.ioc(), std::move(_socket), _callback, _verbose);
                     }
@@ -135,8 +139,8 @@ namespace beauty {
                 }
             }
 
-            // Accept another connection
-            do_accept();
+            // // Accept another connection
+            // do_accept();
         }
 
     private:

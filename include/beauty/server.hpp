@@ -11,7 +11,10 @@ namespace beauty {
     // --------------------------------------------------------------------------
     class server {
     public:
-        server() = default;
+        server(std::string name = "server")
+            : _app(name)
+        {
+        }
         ~server() { stop(); }
 
         server(const server &) = delete;
@@ -26,7 +29,7 @@ namespace beauty {
             return *this;
         }
 
-        server &listen(int port, std::string addr = "", int verbose = 0)
+        server &listen(int port, std::string addr, int verbose = 0)
         {
             return listen(port, address_v4::from_string(addr), verbose);
         }
