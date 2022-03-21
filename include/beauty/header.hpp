@@ -33,22 +33,22 @@ namespace beauty {
 
     //// This `enable_if` avoids `std::enable_if`'s failing when false.
 
-    //using _sel_tcp = int;
-    //using _sel_udp = bool;
+    // using _sel_tcp = int;
+    // using _sel_udp = bool;
 
-    //template <bool _Test, class _T1 = _sel_tcp, class _T2 = _sel_udp>
-    //struct enable_if {
-    //};
+    // template <bool _Test, class _T1 = _sel_tcp, class _T2 = _sel_udp>
+    // struct enable_if {
+    // };
 
-    //template <class _T1, class _T2>
-    //struct enable_if<true, _T1, _T2> {
-    //    using type = _T1;
-    //};
+    // template <class _T1, class _T2>
+    // struct enable_if<true, _T1, _T2> {
+    //     using type = _T1;
+    // };
 
-    //template <class _T1, class _T2>
-    //struct enable_if<false, _T1, _T2> {
-    //    using type = _T2;
-    //}; // default member "type" = bool when !_Test
+    // template <class _T1, class _T2>
+    // struct enable_if<false, _T1, _T2> {
+    //     using type = _T2;
+    // }; // default member "type" = bool when !_Test
 
     // --------------------------------------------------------------------------
 
@@ -116,7 +116,8 @@ namespace beauty {
          *      return `true` to try read (async) again. [Default]
          *      return `false` to close the session.
          */
-        std::function<bool(const buffer_type &)> on_read = [](const buffer_type &) { return true; };
+        std::function<bool(boost::asio::streambuf &, size_t)> on_read
+            = [](boost::asio::streambuf &, size_t) { return true; };
         /**
          * @brief Callback on read failed.
          *      return `true` to try write (async) again.

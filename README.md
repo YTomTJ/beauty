@@ -17,7 +17,7 @@ int main()
     beauty::tcp_server server;
 
     beauty::tcp_callback cb;
-    cb.on_read = [&server](const beauty::buffer_type &data) {
+    cb.on_read = [&server](boost::asio::streambuf &, size_t) {
         return true; // return `true` to continue next read, only when connected.
     };
 
@@ -59,7 +59,7 @@ int main()
     cb.on_disconnected = [&client](beauty::tcp_endpoint) {
         client.connect(5580, "127.0.0.1"); // try connect again.
     };
-    cb.on_read = [&client](const beauty::buffer_type &data) { //
+    cb.on_read = [&client](boost::asio::streambuf &, size_t) { //
         return true; // return `true` to continue next read,  only when connected.
     };
     cb.on_write = [&client, str](const size_t size) { //

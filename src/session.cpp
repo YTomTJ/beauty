@@ -67,14 +67,11 @@ namespace beauty {
             }
         } else {
             _INFO(_verbose > 1, "Successfully read " << tbytes << " bytes.");
-            // Copy data from to temporary buffer.
-            std::vector<uint8_t> _temp_buffer;
             _buffer.commit(tbytes);
-            buffer_copy(boost::asio::buffer(_temp_buffer), _buffer.data());
-            _buffer.consume(tbytes);
-            if (_callback.on_read(_temp_buffer)) {
+            if (_callback.on_read(_buffer, tbytes)) {
                 read(true);
             }
+            _buffer.consume(tbytes);
         }
     }
 
@@ -91,13 +88,11 @@ namespace beauty {
         } else {
             _INFO(_verbose > 1, "Successfully read " << tbytes << " bytes.");
             // Copy data from to temporary buffer.
-            std::vector<uint8_t> _temp_buffer;
             _buffer.commit(tbytes);
-            buffer_copy(boost::asio::buffer(_temp_buffer), _buffer.data());
-            _buffer.consume(tbytes);
-            if (_callback.on_read(_temp_buffer)) {
+            if (_callback.on_read(_buffer, tbytes)) {
                 receive(ep, true);
             }
+            _buffer.consume(tbytes);
         }
     }
 
