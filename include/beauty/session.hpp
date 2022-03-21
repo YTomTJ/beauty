@@ -65,16 +65,19 @@ namespace beauty {
          * @brief Start a receive action.
          * @param ep Target remote endpoint.
          * @param async If using async reading mode.
+         * @param buffer_size Size of the receiving buffer.
          */
-        void receive(endpoint<udp> ep, bool async);
+        void receive(endpoint<udp> ep, bool async,
+            const size_t buffer_size = 32 * 1024 /* MTU max packet size */);
 
         /**
          * @brief Start a read action.
          * @param async If using async reading mode.
+         * @param buffer_size Size of the receiving buffer.
          */
-        void read(bool async) //
+        void read(bool async, const size_t buffer_size = 10 * 1024 * 1024)
         {
-            do_read(async);
+            do_read(buffer_size, async);
         }
 
         /**
@@ -131,7 +134,7 @@ namespace beauty {
         }
 
         // TCP only.
-        void do_read(bool async);
+        void do_read(const size_t buffer_size, bool async);
 
         void on_read(const edp_t &ep, error_code ec, std::size_t tbytes);
 
