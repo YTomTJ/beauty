@@ -5,9 +5,6 @@
 #include <functional>
 #include <boost/asio.hpp>
 
-#define USING_LOG 1
-#define USING_LOGURU
-
 #if defined(USING_LOG) && USING_LOG
 #ifdef USING_LOGURU
 #include "./loguru/loguru.hpp"
@@ -33,27 +30,35 @@
 namespace beauty {
 
     using buffer_type = std::vector<uint8_t>;
-    using endpoint = boost::asio::ip::tcp::endpoint;
     using address_v4 = boost::asio::ip::address_v4;
     using error_code = boost::system::error_code;
+    using tcp = boost::asio::ip::tcp;
+    using udp = boost::asio::ip::udp;
+
+    template <typename _Protocol>
+    using endpoint = typename _Protocol::endpoint;
 
     // --------------------------------------------------------------------------
-    // TCP callback interface
+    // Callback interface
     // --------------------------------------------------------------------------
 
+    template <typename _Protocol>
     class callback {
+
+        using edp_t = endpoint<_Protocol>;
+
     public:
         /**
          * @brief Callback on server acception succeeded.
          * @note Server ONLY.
          */
-        std::function<void(endpoint)> on_accepted = [](endpoint) {};
+        std::function<void(edp_t)> on_accepted = [](edp_t) {};
 
         /**
          * @brief Callback on client connection succeeded.
          * @note Client ONLY.
          */
-        std::function<void(endpoint)> on_connected = [](endpoint) {};
+        std::function<void(edp_t)> on_connected = [](edp_t) {};
 
         /**
          * @brief Callback on client connection failed.
@@ -61,16 +66,16 @@ namespace beauty {
          *      return `true` to try connect again.
          *      return `false` to close the session. [Default]
          */
-        std::function<bool(endpoint, error_code)> on_connect_failed
-            = [](endpoint, error_code) { return false; };
+        std::function<bool(edp_t, error_code)> on_connect_failed
+            = [](edp_t, error_code) { return false; };
 
         /**
          * @brief Callback on connection is closed.
-         * @note For a @ref client, the param `endpoint` make no sense.
+         * @note For a @ref client, the param `edp_t` make no sense.
          *       For a @ref server, its @ref acceptor will REPLACE this method to have better
          * response when a connection is failed.
          */
-        std::function<void(endpoint)> on_disconnected = [](endpoint) {};
+        std::function<void(edp_t)> on_disconnected = [](edp_t) {};
 
         /**
          * @brief Callback on successflly wrote some data.

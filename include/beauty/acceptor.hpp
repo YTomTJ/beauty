@@ -15,9 +15,15 @@ namespace beauty {
     //---------------------------------------------------------------------------
     // Accepts incoming connections and launches the sessions
     //---------------------------------------------------------------------------
-    class acceptor : public std::enable_shared_from_this<acceptor> {
+    template <typename _Protocol>
+    class acceptor : public std::enable_shared_from_this<acceptor<_Protocol>> {
+
+        using cb_t = callback<_Protocol>;
+        using edp_t = endpoint<_Protocol>;
+        using sess_t = session<_Protocol>;
+
     public:
-        acceptor(application &app, const endpoint &endpoint, const callback &cb, int verbose)
+        acceptor(application &app, const edp_t &endpoint, const cb_t &cb, int verbose)
             : _app(app)
             , _acceptor(app.ioc())
             , _socket(app.ioc())
@@ -25,7 +31,7 @@ namespace beauty {
             , _verbose(verbose)
         {
             // NOTE: on_disconnected event will be replaced.
-            _callback.on_disconnected = [this](beauty::endpoint ep) {
+            _callback.on_disconnected = [this](edp_t ep) {
                 this->_session.reset();
                 // Accept another connection on failed.
                 do_accept();
@@ -125,7 +131,7 @@ namespace beauty {
 
                     if (!_session) {
                         _INFO(_verbose > 1, "Make session on " << ep << " for " << epr);
-                        _session = std::make_shared<session>(
+                        _session = std::make_shared<sess_t>(
                             _app.ioc(), std::move(_socket), _callback, _verbose);
                     }
 
@@ -150,10 +156,10 @@ namespace beauty {
 
     private:
         application &_app;
-        asio::ip::tcp::acceptor _acceptor;
-        asio::ip::tcp::socket _socket;
-        std::shared_ptr<session> _session;
-        callback _callback;
+        typename _Protocol::acceptor _acceptor;
+        typename _Protocol::socket _socket;
+        std::shared_ptr<sess_t> _session;
+        cb_t _callback;
         const int _verbose;
     };
 

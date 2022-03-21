@@ -15,9 +15,9 @@ This is a simple Http server and client above <a href="https://github.com/boosto
 
 int main()
 {
-    beauty::server server;
+    beauty::tcp_server server;
 
-    beauty::callback cb;
+    beauty::tcp_callback cb;
     cb.on_read = [&server](const beauty::buffer_type &data) {
         return true; // return `true` to continue next read, only when connected.
     };
@@ -42,12 +42,13 @@ int main()
 
 int main()
 {
-    std::string str = "HEARTBEAT";
-    beauty::client client;
+    beauty::tcp_client client;
+    beauty::tcp_callback cb;
 
-    beauty::callback cb;
+    std::string str = "HEARTBEAT";
     size_t write_trial = 0;
-    cb.on_connected = [&client, str, &write_trial](beauty::endpoint ep) {
+
+    cb.on_connected = [&client, str, &write_trial](beauty::tcp_endpoint ep) {
         client.write(str, true); // start write
         client.read(true); // start read
         write_trial = 0;
@@ -55,7 +56,7 @@ int main()
     cb.on_connect_failed = [&client](auto, auto) {
         return true; // return `true` to connect same endpoint angain on failed.
     };
-    cb.on_disconnected = [&client](beauty::endpoint) {
+    cb.on_disconnected = [&client](beauty::tcp_endpoint) {
         client.connect(5580, "127.0.0.1"); // try connect again.
     };
     cb.on_read = [&client](const beauty::buffer_type &data) { //
@@ -75,5 +76,6 @@ int main()
     client.wait();
     return 0;
 }
+
 
 ```

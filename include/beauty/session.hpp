@@ -15,10 +15,16 @@ namespace beauty {
     // --------------------------------------------------------------------------
     // Handles an TCP server connection
     //---------------------------------------------------------------------------
-    class session : public std::enable_shared_from_this<session> {
+    template<typename _Protocol> 
+    class session : public std::enable_shared_from_this<session<_Protocol>> {
+
+        using cb_t = callback<_Protocol>;
+        using edp_t = endpoint<_Protocol>;
+        using socket_t = typename _Protocol::socket;
+
     public:
         session(
-            asio::io_context &ioc, asio::ip::tcp::socket &&socket, const callback &cb, int verbose)
+            asio::io_context &ioc, socket_t &&socket, const cb_t &cb, int verbose)
             : _socket(std::move(socket))
             , _callback(cb)
             , _verbose(verbose)
@@ -34,7 +40,7 @@ namespace beauty {
          * @brief Make connection.
          * @param ep Target remote endpoint.
          */
-        void connect(endpoint ep)
+        void connect(edp_t ep)
         {
             if (_is_connnected)
                 return;
@@ -84,7 +90,7 @@ namespace beauty {
         }
 
     protected:
-        void on_connect(const endpoint &ep, const error_code &ec)
+        void on_connect(const edp_t &ep, const error_code &ec)
         {
             if (ec) {
                 _ERROR(_verbose > 0,
@@ -182,10 +188,10 @@ namespace beauty {
         void do_close()
         {
             error_code ec;
-            endpoint epx = _socket.remote_endpoint(ec);
+            edp_t epx = _socket.remote_endpoint(ec);
             _INFO(_verbose > 0, "Close connection on " << epx);
             // Send a TCP shutdown
-            _socket.shutdown(asio::ip::tcp::socket::shutdown_send, ec);
+            _socket.shutdown(socket_t::shutdown_send, ec);
             _socket.close();
             _callback.on_disconnected(epx);
             _is_connnected = false;
@@ -193,10 +199,10 @@ namespace beauty {
 
     private:
         boost::atomic<bool> _is_connnected = false;
-        asio::ip::tcp::socket _socket;
+        socket_t _socket;
         asio::strand<asio::io_context::executor_type> _strand;
         boost::asio::streambuf _buffer;
-        const callback &_callback;
+        const cb_t &_callback;
         const int _verbose;
     };
 } // namespace beauty

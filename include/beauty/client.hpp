@@ -13,7 +13,13 @@ namespace asio = boost::asio;
 namespace beauty {
 
     // --------------------------------------------------------------------------
+    template<typename _Protocol> 
     class client {
+
+        using cb_t = callback<_Protocol>;
+        using edp_t = endpoint<_Protocol>;
+        using sess_t = session<_Protocol>;
+
     public:
         client(std::string name = "client")
             : _app(name)
@@ -36,7 +42,7 @@ namespace beauty {
          * @param verbose See alse @ref connect.
          * @return client&
          */
-        client &connect(int port, std::string addr, const callback &cb = {}, int verbose = 0)
+        client &connect(int port, std::string addr, const cb_t &cb = {}, int verbose = 0)
         {
             return connect(port, address_v4::from_string(addr), cb, verbose);
         }
@@ -49,9 +55,9 @@ namespace beauty {
          * @param verbose See alse @ref connect.
          * @return client&
          */
-        client &connect(int port, address_v4 addr = {}, const callback &cb = {}, int verbose = 0)
+        client &connect(int port, address_v4 addr = {}, const cb_t &cb = {}, int verbose = 0)
         {
-            return connect(endpoint(addr, port), cb, verbose);
+            return connect(edp_t(addr, port), cb, verbose);
         }
 
         /**
@@ -61,14 +67,14 @@ namespace beauty {
          * @param verbose Verbose for the session of the connection.
          * @return client&
          */
-        client &connect(endpoint ep, const callback &cb = {}, int verbose = 0)
+        client &connect(edp_t ep, const cb_t &cb = {}, int verbose = 0)
         {
             try {
                 if (!_app.is_started()) {
                     _app.start();
                 }
                 if (!_session) {
-                    _session = std::make_shared<session>( //
+                    _session = std::make_shared<sess_t>( //
                         _app.ioc(), std::move(_socket), cb, verbose);
                 }
                 _session->connect(ep);
@@ -123,8 +129,8 @@ namespace beauty {
 
     private:
         application _app;
-        std::shared_ptr<session> _session;
-        asio::ip::tcp::socket _socket;
+        std::shared_ptr<sess_t> _session;
+        typename _Protocol::socket _socket;
     };
 
 } // namespace beauty
