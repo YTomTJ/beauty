@@ -15,9 +15,9 @@ namespace beauty {
     //---------------------------------------------------------------------------
     // Accepts incoming connections and launches the sessions
     //---------------------------------------------------------------------------
-    template <typename _Protocol>
-    class acceptor : public std::enable_shared_from_this<acceptor<_Protocol>> {
+    class acceptor : public std::enable_shared_from_this<acceptor> {
 
+        using _Protocol = tcp;
         using cb_t = callback<_Protocol>;
         using edp_t = endpoint<_Protocol>;
         using sess_t = session<_Protocol>;
@@ -156,8 +156,8 @@ namespace beauty {
 
     private:
         application &_app;
-        typename _Protocol::acceptor _acceptor;
-        typename _Protocol::socket _socket;
+        tcp::acceptor _acceptor;
+        tcp::socket _socket;
         std::shared_ptr<sess_t> _session;
         cb_t _callback;
         const int _verbose;

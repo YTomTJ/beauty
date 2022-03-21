@@ -15,7 +15,7 @@ namespace beauty {
     // --------------------------------------------------------------------------
     // Handles an TCP server connection
     //---------------------------------------------------------------------------
-    template<typename _Protocol> 
+    template <typename _Protocol>
     class session : public std::enable_shared_from_this<session<_Protocol>> {
 
         using cb_t = callback<_Protocol>;
@@ -23,11 +23,22 @@ namespace beauty {
         using socket_t = typename _Protocol::socket;
 
     public:
-        session(
-            asio::io_context &ioc, socket_t &&socket, const cb_t &cb, int verbose)
-            : _socket(std::move(socket))
-            , _callback(cb)
+        session(asio::io_context &ioc, const cb_t &cb, int verbose)
+            : _callback(cb)
             , _verbose(verbose)
+            , _socket(ioc)
+#if (BOOST_VERSION < 107000)
+            , _strand(_socket.get_executor())
+#else
+            , _strand(asio::make_strand(ioc))
+#endif
+        {
+        }
+
+        session(asio::io_context &ioc, socket_t &&soc, const cb_t &cb, int verbose)
+            : _callback(cb)
+            , _verbose(verbose)
+            , _socket(std::move(soc))
 #if (BOOST_VERSION < 107000)
             , _strand(_socket.get_executor())
 #else
@@ -49,6 +60,13 @@ namespace beauty {
                 me->on_connect(ep, ec);
             });
         }
+
+        /**
+         * @brief Start a receive action.
+         * @param ep Target remote endpoint.
+         * @param async If using async reading mode.
+         */
+        void receive(endpoint<udp> ep, bool async);
 
         /**
          * @brief Start a read action.
@@ -111,62 +129,12 @@ namespace beauty {
             }
         }
 
-        void do_read(bool async)
-        {
-            _INFO(_verbose > 1, "Arrise " << (async ? "an async" : "a sync") << " read action.");
-            boost::asio::streambuf::mutable_buffers_type mbuf
-                = _buffer.prepare(1024 * 1024 * 1024); // 1Go..
-            if (async) {
-                _socket.async_read_some(mbuf,
-                    asio::bind_executor(
-                        _strand, [me = this->shared_from_this()](auto ec, auto tbytes) {
-                            me->on_read(ec, tbytes);
-                        }));
-            } else {
-                error_code ec;
-                size_t tbytes = asio::read(_socket, mbuf, ec);
-                on_read(ec, tbytes);
-            }
-        }
+        // TCP only.
+        void do_read(bool async);
 
-        void on_read(error_code ec, std::size_t tbytes)
-        {
-            if (ec) {
-                _ERROR(
-                    _verbose > 0, "Read faild with error (" << ec.value() << "): " << ec.message());
-                if (_callback.on_read_failed(ec) && _is_connnected) {
-                    read(true);
-                } else {
-                    do_close();
-                }
-            } else {
-                _INFO(_verbose > 1, "Successfully read " << tbytes << " bytes.");
-                // Copy data from to temporary buffer.
-                std::vector<uint8_t> _temp_buffer;
-                _buffer.commit(tbytes);
-                buffer_copy(boost::asio::buffer(_temp_buffer), _buffer.data());
-                _buffer.consume(tbytes);
-                if (_callback.on_read(_temp_buffer)) {
-                    read(true);
-                }
-            }
-        }
+        void on_read(const edp_t &ep, error_code ec, std::size_t tbytes);
 
-        void do_write(const boost::asio::const_buffer &&buffer, bool async)
-        {
-            _INFO(_verbose > 1, "Arrise " << (async ? "an async" : "a sync") << " write action.");
-            boost::asio::const_buffer copy_buffer = buffer;
-            if (async) {
-                asio::async_write(this->_socket, buffer,
-                    asio::bind_executor(this->_strand,
-                        [me = this->shared_from_this(), copy_buffer](
-                            auto ec, auto tbytes) { me->on_write(copy_buffer, ec, tbytes); }));
-            } else {
-                error_code ec;
-                size_t tbytes = asio::write(this->_socket, buffer, ec);
-                on_write(std::move(copy_buffer), ec, tbytes);
-            }
-        }
+        void do_write(const boost::asio::const_buffer &&buffer, bool async);
 
         void on_write(const boost::asio::const_buffer &buffer, error_code ec, std::size_t tbytes)
         {
@@ -205,4 +173,5 @@ namespace beauty {
         const cb_t &_callback;
         const int _verbose;
     };
+
 } // namespace beauty

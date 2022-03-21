@@ -29,6 +29,29 @@
 
 namespace beauty {
 
+    // --------------------------------------------------------------------------
+
+    //// This `enable_if` avoids `std::enable_if`'s failing when false.
+
+    //using _sel_tcp = int;
+    //using _sel_udp = bool;
+
+    //template <bool _Test, class _T1 = _sel_tcp, class _T2 = _sel_udp>
+    //struct enable_if {
+    //};
+
+    //template <class _T1, class _T2>
+    //struct enable_if<true, _T1, _T2> {
+    //    using type = _T1;
+    //};
+
+    //template <class _T1, class _T2>
+    //struct enable_if<false, _T1, _T2> {
+    //    using type = _T2;
+    //}; // default member "type" = bool when !_Test
+
+    // --------------------------------------------------------------------------
+
     using buffer_type = std::vector<uint8_t>;
     using address_v4 = boost::asio::ip::address_v4;
     using error_code = boost::system::error_code;

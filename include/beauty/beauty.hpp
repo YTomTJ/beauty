@@ -12,13 +12,11 @@ namespace beauty {
     // TCP interface
     using tcp_endpoint = endpoint<tcp>;
     using tcp_callback = callback<tcp>;
-    using tcp_server = server<tcp>;
     using tcp_client = client<tcp>;
 
     // UDP interface
     using udp_endpoint = endpoint<udp>;
     using udp_callback = callback<udp>;
-    using udp_server = server<udp>;
     using udp_client = client<udp>;
 
 } // namespace beauty
