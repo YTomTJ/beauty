@@ -25,6 +25,7 @@ namespace beauty {
     public:
         acceptor(application &app, const edp_t &endpoint, const cb_t &cb, int verbose)
             : _app(app)
+            , _endpoint(endpoint)
             , _acceptor(app.ioc())
             , _socket(app.ioc())
             , _callback(std::move(cb))
@@ -96,8 +97,7 @@ namespace beauty {
 
         void do_accept()
         {
-            auto ep = _acceptor.local_endpoint();
-            _INFO(_verbose > 1, "Start acception on " << ep);
+            _INFO(_verbose > 0, "Start acception on " << _endpoint);
             _acceptor.async_accept(_socket, [this](auto ec) { this->on_accept(ec); });
         }
 
@@ -105,16 +105,16 @@ namespace beauty {
         void on_accept(error_code ec)
         {
             error_code ecx;
-            auto ep = _acceptor.local_endpoint();
+            auto ep = _acceptor.local_endpoint(ecx);
             auto epr = _socket.remote_endpoint(ecx);
 
             if (ec == boost::system::errc::operation_canceled) {
-                _INFO(_verbose > 1,
+                _INFO(_verbose > 0,
                     "Acception on " << ep << " canceled (" << ec.value() << "): " << ec.message());
                 return; // Nothing to do anymore
             }
 
-            _INFO(_verbose > 1, "Acception connection from " << epr);
+            _INFO(_verbose > 0, "Acception connection from " << epr);
             _callback.on_accepted(ep);
 
             if (ec) {
@@ -130,7 +130,7 @@ namespace beauty {
                     }
 
                     if (!_session) {
-                        _INFO(_verbose > 1, "Make session on " << ep << " for " << epr);
+                        _INFO(_verbose > 0, "Make session on " << ep << " for " << epr);
                         _session = std::make_shared<sess_t>(
                             _app.ioc(), std::move(_socket), _callback, _verbose);
                     }
@@ -158,6 +158,7 @@ namespace beauty {
         application &_app;
         tcp::acceptor _acceptor;
         tcp::socket _socket;
+        const edp_t _endpoint;
         std::shared_ptr<sess_t> _session;
         cb_t _callback;
         const int _verbose;

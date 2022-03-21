@@ -55,7 +55,7 @@ namespace beauty {
         {
             if (_is_connnected)
                 return;
-            _INFO(_verbose > 1, "Make connect to " << ep);
+            _INFO(_verbose > 0, "Make connect to " << ep);
             _socket.async_connect(ep, [me = this->shared_from_this(), ep](const error_code &ec) {
                 me->on_connect(ep, ec);
             });
@@ -121,11 +121,12 @@ namespace beauty {
                 }
                 return;
             } else {
-                _INFO(_verbose > 1, "Succeed connecting to " << ep);
+                _INFO(_verbose > 0, "Succeed connecting to " << ep);
                 error_code ecx;
                 auto epx = _socket.remote_endpoint(ecx);
-                _callback.on_connected(epx);
                 _is_connnected = true;
+
+                _callback.on_connected(epx);
             }
         }
 
@@ -161,8 +162,9 @@ namespace beauty {
             // Send a TCP shutdown
             _socket.shutdown(socket_t::shutdown_send, ec);
             _socket.close();
-            _callback.on_disconnected(epx);
             _is_connnected = false;
+
+            _callback.on_disconnected(epx);
         }
 
     private:
