@@ -8,20 +8,20 @@ namespace beauty {
             error_code ec;
             _socket.open(ep.protocol(), ec);
             if (ec) {
-                _ERROR(_verbose > 0,
+                BEAUTY_ERROR(_verbose > 0,
                     "Open UDP socket for " << ep << " faild with error (" << ec.value()
                                            << "): " << ec.message());
                 return;
             }
             _socket.bind(ep, ec);
             if (ec) {
-                _ERROR(_verbose > 0,
+                BEAUTY_ERROR(_verbose > 0,
                     "Bind UDP port for " << ep << " faild with error (" << ec.value()
                                          << "): " << ec.message());
                 return;
             }
         }
-        _INFO(
+        BEAUTY_INFO(
             _verbose > 1, "Start " << (async ? "an async" : "a sync") << " receiving from " << ep);
         boost::asio::streambuf::mutable_buffers_type mbuf = _buffer.prepare(buffer_size);
         if (async) {
@@ -37,7 +37,7 @@ namespace beauty {
 
     void session<tcp>::do_read(const size_t buffer_size, bool async)
     {
-        _INFO(_verbose > 1, "Arrise " << (async ? "an async" : "a sync") << " read action.");
+        BEAUTY_INFO(_verbose > 1, "Arrise " << (async ? "an async" : "a sync") << " read action.");
         boost::asio::streambuf::mutable_buffers_type mbuf = _buffer.prepare(buffer_size);
         if (async) {
             this->_socket.async_read_some(mbuf,
@@ -55,19 +55,23 @@ namespace beauty {
     void session<tcp>::on_read(const edp_t & /* ep not used */, error_code ec, std::size_t tbytes)
     {
         if (ec) {
-            _ERROR(_verbose > 0, "Read faild with error (" << ec.value() << "): " << ec.message());
-            if (_callback.on_read_failed(ec) && _is_connnected) {
+            BEAUTY_ERROR(
+                _verbose > 0, "Read faild with error (" << ec.value() << "): " << ec.message());
+            if (_callback.on_read_failed(*this, ec) && _is_connnected) {
                 read(true);
             } else {
                 do_close();
             }
         } else {
-            _INFO(_verbose > 1, "Successfully read " << tbytes << " bytes.");
+            BEAUTY_INFO(_verbose > 1, "Successfully read " << tbytes << " bytes.");
+            bool read_more = false;
             _buffer.commit(tbytes);
-            if (_callback.on_read(_buffer, tbytes)) {
-                read(true);
+            if (_callback.on_read(*this, _buffer, tbytes)) {
+                read_more = true;
             }
             _buffer.consume(tbytes);
+            if (read_more)
+                read(true);
         }
     }
 
@@ -75,25 +79,30 @@ namespace beauty {
     void session<udp>::on_read(const edp_t &ep, error_code ec, std::size_t tbytes)
     {
         if (ec) {
-            _ERROR(_verbose > 0, "Read faild with error (" << ec.value() << "): " << ec.message());
-            if (_callback.on_read_failed(ec)) {
+            BEAUTY_ERROR(
+                _verbose > 0, "Read faild with error (" << ec.value() << "): " << ec.message());
+            if (_callback.on_read_failed(*this, ec)) {
                 receive(ep, true);
             } else {
                 do_close();
             }
         } else {
-            _INFO(_verbose > 1, "Successfully read " << tbytes << " bytes.");
+            BEAUTY_INFO(_verbose > 1, "Successfully read " << tbytes << " bytes.");
             // Copy data from to temporary buffer.
+            bool read_more = false;
             _buffer.commit(tbytes);
-            if (_callback.on_read(_buffer, tbytes)) {
-                receive(ep, true);
+            if (_callback.on_read(*this, _buffer, tbytes)) {
+                read_more = true;
             }
+            _buffer.consume(tbytes);
+            if (read_more)
+                receive(ep, true);
         }
     }
 
     void session<tcp>::do_write(const boost::asio::const_buffer &&buffer, bool async)
     {
-        _INFO(_verbose > 1, "Arrise " << (async ? "an async" : "a sync") << " write action.");
+        BEAUTY_INFO(_verbose > 1, "Arrise " << (async ? "an async" : "a sync") << " write action.");
         boost::asio::const_buffer copy_buffer = buffer;
         if (async) {
             this->_socket.async_write_some(buffer,
@@ -109,7 +118,7 @@ namespace beauty {
 
     void session<udp>::do_write(const boost::asio::const_buffer &&buffer, bool async)
     {
-        _INFO(_verbose > 1, "Arrise " << (async ? "an async" : "a sync") << " write action.");
+        BEAUTY_INFO(_verbose > 1, "Arrise " << (async ? "an async" : "a sync") << " write action.");
         boost::asio::const_buffer copy_buffer = buffer;
         if (async) {
             this->_socket.async_send(buffer,

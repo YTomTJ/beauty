@@ -7,16 +7,17 @@
 
 #if defined(USING_LOG) && USING_LOG
 #ifdef USING_LOGURU
-#include "./loguru/loguru.hpp"
-#define _INFO(cond, x)  VLOG_IF_S(loguru::Verbosity_INFO, cond) << x;
-#define _ERROR(cond, x) VLOG_IF_S(loguru::Verbosity_ERROR, cond) << x;
+#include "loguru/loguru.hpp"
+#define BEAUTY_INFO(cond, x)  VLOG_IF_S(loguru::Verbosity_INFO, cond) << x;
+#define BEAUTY_ERROR(cond, x) VLOG_IF_S(loguru::Verbosity_ERROR, cond) << x;
 #else
-#define _INFO(cond, x) (cond ? std::cout << x << std::endl : (void)0;
-#define _ERROR(cond, x) (cond ? std::cout << x << std::endl: (void)0;
+#include <iostream>
+#define BEAUTY_INFO(cond, x)  ((cond) ? (std::cout << x << std::endl) : (std::cout));
+#define BEAUTY_ERROR(cond, x) ((cond) ? (std::cout << x << std::endl) : (std::cout));
 #endif
 #else
-#define _INFO(cond, x)  (void)0;
-#define _ERROR(cond, x) (void)0;
+#define BEAUTY_INFO(cond, x)  (void)0;
+#define BEAUTY_ERROR(cond, x) (void)0;
 #endif
 
 #ifndef __FUNCTION_NAME__
@@ -28,29 +29,6 @@
 #endif
 
 namespace beauty {
-
-    // --------------------------------------------------------------------------
-
-    //// This `enable_if` avoids `std::enable_if`'s failing when false.
-
-    // using _sel_tcp = int;
-    // using _sel_udp = bool;
-
-    // template <bool _Test, class _T1 = _sel_tcp, class _T2 = _sel_udp>
-    // struct enable_if {
-    // };
-
-    // template <class _T1, class _T2>
-    // struct enable_if<true, _T1, _T2> {
-    //     using type = _T1;
-    // };
-
-    // template <class _T1, class _T2>
-    // struct enable_if<false, _T1, _T2> {
-    //     using type = _T2;
-    // }; // default member "type" = bool when !_Test
-
-    // --------------------------------------------------------------------------
 
     using buffer_type = std::vector<uint8_t>;
     using address_v4 = boost::asio::ip::address_v4;
@@ -65,65 +43,85 @@ namespace beauty {
     // Callback interface
     // --------------------------------------------------------------------------
 
+    class acceptor;
+
+    template <typename _Protocol>
+    class session;
+
     template <typename _Protocol>
     class callback {
 
         using edp_t = endpoint<_Protocol>;
+        using sess_t = session<_Protocol>;
 
     public:
         /**
          * @brief Callback on server acception succeeded.
+         * @param acceptor Server endpoint.
+         * @param edp_t Local endpoint.
+         * @param edp_t Remote endpoint.
          * @note Server ONLY.
          */
-        std::function<void(edp_t)> on_accepted = [](edp_t) {};
+        std::function<void(acceptor &, edp_t, edp_t)> on_accepted = [](acceptor &, edp_t, edp_t) {};
 
         /**
          * @brief Callback on client connection succeeded.
+         * @param sess_t Current session.
+         * @param Local endpoint, remote endpoint.
          * @note Client ONLY.
          */
-        std::function<void(edp_t)> on_connected = [](edp_t) {};
+        std::function<void(sess_t &, edp_t, edp_t)> on_connected = [](sess_t &, edp_t, edp_t) {};
 
         /**
          * @brief Callback on client connection failed.
+         * @param sess_t Current session.
          * @note Client ONLY.
          *      return `true` to try connect again.
          *      return `false` to close the session. [Default]
          */
-        std::function<bool(edp_t, error_code)> on_connect_failed
-            = [](edp_t, error_code) { return false; };
+        std::function<bool(sess_t &, edp_t, error_code)> on_connect_failed
+            = [](sess_t &, edp_t, error_code) { return false; };
 
         /**
          * @brief Callback on connection is closed.
+         * @param sess_t Current session.
          * @note For a @ref client, the param `edp_t` make no sense.
          *       For a @ref server, its @ref acceptor will REPLACE this method to have better
          * response when a connection is failed.
          */
-        std::function<void(edp_t)> on_disconnected = [](edp_t) {};
+        std::function<void(sess_t &, edp_t)> on_disconnected = [](sess_t &, edp_t) {};
 
         /**
          * @brief Callback on successflly wrote some data.
+         * @param sess_t Current session.
          */
-        std::function<void(const size_t)> on_write = [](const size_t) {};
+        std::function<void(sess_t &, const size_t)> on_write = [](sess_t &, const size_t) {};
+
         /**
          * @brief Callback on write failed.
          *      return `true` to try write (async) again.
          *      return `false` to close the session. [Default]
+         * @param sess_t Current session.
          */
-        std::function<bool(error_code)> on_write_failed = [](error_code) { return false; };
+        std::function<bool(sess_t &, error_code)> on_write_failed
+            = [](sess_t &, error_code) { return false; };
 
         /**
          * @brief Callback on read some data.
          *      return `true` to try read (async) again. [Default]
          *      return `false` to close the session.
+         * @param sess_t Current session.
          */
-        std::function<bool(boost::asio::streambuf &, size_t)> on_read
-            = [](boost::asio::streambuf &, size_t) { return true; };
+        std::function<bool(sess_t &, boost::asio::streambuf &, size_t)> on_read
+            = [](sess_t &, boost::asio::streambuf &, size_t) { return true; };
         /**
          * @brief Callback on read failed.
          *      return `true` to try write (async) again.
          *      return `false` to close the session. [Default]
+         * @param sess_t Current session.
          */
-        std::function<bool(error_code)> on_read_failed = [](error_code) { return false; };
+        std::function<bool(sess_t &, error_code)> on_read_failed
+            = [](sess_t &, error_code) { return false; };
     };
 
 } // namespace beauty

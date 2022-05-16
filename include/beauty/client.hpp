@@ -54,8 +54,7 @@ namespace beauty {
          * @param verbose See alse @ref connect.
          * @return client&
          */
-        client &connect(
-            int port, address_v4 addr = {}, const cb_t &cb = {}, int verbose = 0)
+        client &connect(int port, address_v4 addr = {}, const cb_t &cb = {}, int verbose = 0)
         {
             return connect(edp_t(addr, port), cb, verbose);
         }
@@ -79,10 +78,10 @@ namespace beauty {
                 _session->connect(ep);
 
             } catch (const boost::system::system_error &e) {
-                _ERROR(true, "session error: " << e.what());
+                BEAUTY_ERROR(true, "session error: " << e.what());
                 _session.reset();
             } catch (const std::exception &e) {
-                _ERROR(true, "session error: " << e.what());
+                BEAUTY_ERROR(true, "session error: " << e.what());
                 _session.reset();
             }
             return *this;
@@ -104,14 +103,14 @@ namespace beauty {
                 if (!_session) {
                     _session = std::make_shared<sess_t>(_app.ioc(), cb, verbose);
                 }
-                endpoint<udp> ep(address_v4::from_string("127.0.0.1"), port);
+                endpoint<udp> ep(address_v4(), port);
                 _session->receive(ep, async);
 
             } catch (const boost::system::system_error &e) {
-                _ERROR(true, "session error: " << e.what());
+                BEAUTY_ERROR(true, "session error: " << e.what());
                 _session.reset();
             } catch (const std::exception &e) {
-                _ERROR(true, "session error: " << e.what());
+                BEAUTY_ERROR(true, "session error: " << e.what());
                 _session.reset();
             }
             return *this;
@@ -141,6 +140,11 @@ namespace beauty {
         }
 
         /**
+         * @brief Destroy current session.
+         */
+        void close() { _session.reset(); }
+
+        /**
          * @brief Run the application's IO service (blocking).
          */
         void run() { _app.run(); }
@@ -156,6 +160,7 @@ namespace beauty {
         void wait() { _app.wait(); }
 
         const application &app() const { return _app; }
+        bool is_connnected() const { return _session && _session->is_connnected(); }
 
     private:
         application _app;

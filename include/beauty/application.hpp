@@ -50,7 +50,7 @@ namespace beauty {
             _state = State::started;
 
             // Run the I/O service on the requested number of threads
-            _threads.resize(std::max(1, concurrency));
+            _threads.resize(concurrency > 1 ? concurrency : 1);
             _active_threads = 0;
             for (auto &t : _threads) {
                 ++_active_threads;
@@ -63,7 +63,7 @@ namespace beauty {
                             _ioc.run();
                             break;
                         } catch (const std::exception &ex) {
-                            _ERROR(true, "worker error: " << ex.what());
+                            BEAUTY_ERROR(true, "worker error: " << ex.what());
                         }
                     }
                     --_active_threads;

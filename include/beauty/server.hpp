@@ -95,13 +95,13 @@ namespace beauty {
             return _acceptors.at(port);
         }
 
-        const std::vector<int> &get_ports() const
-        {
-            std::vector<int> keys;
-            std::transform(_acceptors.begin(), _acceptors.end(), std::back_inserter(keys),
-                [](auto &pair) { return pair.first; });
-            return std::move(keys);
-        }
+        //std::vector<int> get_ports() const
+        //{
+        //    std::vector<int> keys;
+        //    std::transform(_acceptors.begin(), _acceptors.end(), std::back_inserter(keys),
+        //        [](auto &pair) { return pair.first; });
+        //    return keys;
+        //}
 
     private:
         application _app;

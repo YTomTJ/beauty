@@ -28,11 +28,14 @@ namespace beauty {
             , _endpoint(endpoint)
             , _acceptor(app.ioc())
             , _socket(app.ioc())
-            , _callback(std::move(cb))
+            , _callback(cb)
             , _verbose(verbose)
         {
             // NOTE: on_disconnected event will be replaced.
-            _callback.on_disconnected = [this](edp_t ep) {
+            _on_disconnected = _callback.on_disconnected;
+            _callback.on_disconnected = [this](sess_t &sess, edp_t ep) {
+                _on_disconnected(sess, ep);
+                // Release the session.
                 this->_session.reset();
                 // Accept another connection on failed.
                 do_accept();
@@ -97,9 +100,11 @@ namespace beauty {
 
         void do_accept()
         {
-            _INFO(_verbose > 0, "Start acception on " << _endpoint);
+            BEAUTY_INFO(true, "Start acception on " << _endpoint);
             _acceptor.async_accept(_socket, [this](auto ec) { this->on_accept(ec); });
         }
+
+        const edp_t get_endpoint() const { return _endpoint; };
 
     protected:
         void on_accept(error_code ec)
@@ -109,16 +114,16 @@ namespace beauty {
             auto epr = _socket.remote_endpoint(ecx);
 
             if (ec == boost::system::errc::operation_canceled) {
-                _INFO(_verbose > 0,
+                BEAUTY_INFO(_verbose > 0,
                     "Acception on " << ep << " canceled (" << ec.value() << "): " << ec.message());
                 return; // Nothing to do anymore
             }
 
-            _INFO(_verbose > 0, "Acception connection from " << epr);
-            _callback.on_accepted(ep);
+            BEAUTY_INFO(true, "Accepted connection from " << epr);
+            _callback.on_accepted(*this, ep, epr);
 
             if (ec) {
-                _ERROR(_verbose > 0,
+                BEAUTY_ERROR(_verbose > 0,
                     "Acception on " << ep << " faild with error (" << ec.value()
                                     << "): " << ec.message());
                 _app.stop();
@@ -130,11 +135,12 @@ namespace beauty {
                     }
 
                     if (!_session) {
-                        _INFO(_verbose > 0, "Make session on " << ep << " for " << epr);
+                        BEAUTY_INFO(_verbose > 0, "Make session on " << ep << " for " << epr);
                         _session = std::make_shared<sess_t>(
                             _app.ioc(), std::move(_socket), _callback, _verbose);
                     }
 
+                    _session->_is_connnected = true;
                     _session->read(true);
                     // Return on connection succeeded.
                     return;
@@ -162,6 +168,7 @@ namespace beauty {
         std::shared_ptr<sess_t> _session;
         cb_t _callback;
         const int _verbose;
+        std::function<void(sess_t &, edp_t)> _on_disconnected;
     };
 
 } // namespace beauty
