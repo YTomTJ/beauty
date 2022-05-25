@@ -2,23 +2,22 @@
 This is a simple Http server and client above <a href="https://github.com/boostorg/asio">Boost.Asio</a>. The implement is somewhat a simplified version of <a href="https://github.com/dfleury2/beauty">Beauty</a>, only with basic buffer transfer. This project is design with event-driven high-level interface.
 
 ## Features
-- Header only
 - Synchronous or Asynchronous API
 - Event-driven high-level interface
 
 ## Examples
 
-- a server
+- a TCP server
 
 ```cpp
 #include "beauty/beauty.hpp"
 
 int main()
 {
-    beauty::server server;
+    beauty::tcp_server server;
 
-    beauty::callback cb;
-    cb.on_read = [&server](const beauty::buffer_type &data) {
+    beauty::tcp_callback cb;
+    cb.on_read = [&server](boost::asio::streambuf &, size_t) {
         return true; // return `true` to continue next read, only when connected.
     };
 
@@ -34,20 +33,22 @@ int main()
     return 0;
 }
 
+
 ```
-- a client
+- a TCP client
 
 ```cpp
 #include "beauty/beauty.hpp"
 
 int main()
 {
-    std::string str = "HEARTBEAT";
-    beauty::client client;
+    beauty::tcp_client client;
+    beauty::tcp_callback cb;
 
-    beauty::callback cb;
+    std::string str = "HEARTBEAT";
     size_t write_trial = 0;
-    cb.on_connected = [&client, str, &write_trial](beauty::endpoint ep) {
+
+    cb.on_connected = [&client, str, &write_trial](beauty::tcp_endpoint ep) {
         client.write(str, true); // start write
         client.read(true); // start read
         write_trial = 0;
@@ -55,10 +56,10 @@ int main()
     cb.on_connect_failed = [&client](auto, auto) {
         return true; // return `true` to connect same endpoint angain on failed.
     };
-    cb.on_disconnected = [&client](beauty::endpoint) {
+    cb.on_disconnected = [&client](beauty::tcp_endpoint) {
         client.connect(5580, "127.0.0.1"); // try connect again.
     };
-    cb.on_read = [&client](const beauty::buffer_type &data) { //
+    cb.on_read = [&client](boost::asio::streambuf &, size_t) { //
         return true; // return `true` to continue next read,  only when connected.
     };
     cb.on_write = [&client, str](const size_t size) { //
@@ -72,6 +73,63 @@ int main()
     };
 
     client.connect(5580, "127.0.0.1", cb, 2);
+    client.wait();
+    return 0;
+}
+
+```
+
+
+- a UDP server
+
+```cpp
+#include "beauty/beauty.hpp"
+
+int main()
+{
+    beauty::udp_client client;
+    beauty::udp_callback cb;
+
+    std::string str = "HEARTBEAT";
+
+    cb.on_read_failed = [&client](beauty::error_code) { //
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        return true; // return `true` to continue next read,  only when connected.
+    };
+
+    client.receive(5580, cb, true, 2);
+    client.wait();
+    return 0;
+}
+
+```
+
+
+- a UDP client
+
+```cpp
+#include "beauty/beauty.hpp"
+
+int main()
+{
+    beauty::udp_client client;
+    beauty::udp_callback cb;
+
+    std::string str = "HEARTBEAT";
+
+    cb.on_connected = [&client, str](beauty::udp_endpoint ep) {
+        client.write(str, true); // start write
+    };
+    cb.on_write = [&client, str](const size_t size) { //
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        client.write(str, true); // continue next write, only when connected.
+    };
+    cb.on_write_failed = [&client](beauty::error_code) { //
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        return true;
+    };
+
+    client.connect(5580, "127.0.0.1", cb, 2); // connect to remote, should always success.
     client.wait();
     return 0;
 }

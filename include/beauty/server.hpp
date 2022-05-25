@@ -9,21 +9,28 @@
 namespace beauty {
 
     // --------------------------------------------------------------------------
-    class server {
+    class tcp_server {
+
+        using _Protocol = tcp;
+        using cb_t = callback<_Protocol>;
+        using edp_t = endpoint<_Protocol>;
+        using sess_t = session<_Protocol>;
+        using accep_t = acceptor;
+
     public:
-        server(std::string name = "server")
+        tcp_server(std::string name = "tcp_server")
             : _app(name)
         {
         }
-        ~server() { stop(); }
+        ~tcp_server() { stop(); }
 
-        server(const server &) = delete;
-        server &operator=(const server &) = delete;
+        tcp_server(const tcp_server &) = delete;
+        tcp_server &operator=(const tcp_server &) = delete;
 
-        server(server &&) = default;
-        server &operator=(server &&) = default;
+        tcp_server(tcp_server &&) = default;
+        tcp_server &operator=(tcp_server &&) = default;
 
-        server &concurrency(int concurrency)
+        tcp_server &concurrency(int concurrency)
         {
             _concurrency = concurrency;
             return *this;
@@ -36,13 +43,13 @@ namespace beauty {
          * @param verbose Verbose for the session of the connection.
          * @return client&
          */
-        const std::shared_ptr<acceptor> &listen(int port, const callback &cb, int verbose = 0)
+        const std::shared_ptr<accep_t> &listen(int port, const cb_t &cb, int verbose = 0)
         {
             if (!_app.is_started()) {
                 _app.start(_concurrency);
             }
-            auto ep = endpoint(address_v4(), port);
-            _acceptors.emplace(port, std::make_shared<acceptor>(_app, ep, cb, verbose));
+            auto ep = edp_t(address_v4(), port);
+            _acceptors.emplace(port, std::make_shared<accep_t>(_app, ep, cb, verbose));
             return _acceptors.at(port);
         }
 
@@ -82,26 +89,25 @@ namespace beauty {
          * @param port Local listening endpoint's port.
          * @return const std::shared_ptr<acceptor>&
          */
-        const std::shared_ptr<acceptor> &get_acceptor(int port) const
+        const std::shared_ptr<accep_t> &get_acceptor(int port) const
         {
             assert(_acceptors.find(port) != _acceptors.end());
             return _acceptors.at(port);
         }
 
-        const std::vector<int> &get_ports() const
-        {
-            std::vector<int> keys;
-            std::transform(_acceptors.begin(), _acceptors.end(), std::back_inserter(keys),
-                [](auto &pair) { return pair.first; });
-            return std::move(keys);
-        }
+        //std::vector<int> get_ports() const
+        //{
+        //    std::vector<int> keys;
+        //    std::transform(_acceptors.begin(), _acceptors.end(), std::back_inserter(keys),
+        //        [](auto &pair) { return pair.first; });
+        //    return keys;
+        //}
 
     private:
         application _app;
         int _concurrency = 1;
-        callback _callback;
-
-        std::map<int, std::shared_ptr<acceptor>> _acceptors;
+        cb_t _callback;
+        std::map<int, std::shared_ptr<accep_t>> _acceptors;
     };
 
 } // namespace beauty
